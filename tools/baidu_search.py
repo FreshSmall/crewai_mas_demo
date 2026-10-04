@@ -25,10 +25,11 @@
 import os
 import json
 import logging
+import re
 from typing import Type, Optional, List, Dict, Any, Literal, Union
 import requests
 from crewai.tools import BaseTool
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -44,6 +45,18 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
     # 防止日志向上传播，避免重复输出
     logger.propagate = False
+
+
+# LLM 可能用别的参数名传搜索词，统一映射到 query，避免 "Field required" 校验失败
+_QUERY_ALIASES = ("search_query", "keyword", "keywords", "search_keywords", "q")
+
+# 时间筛选的常见同义词（LLM 不一定严格按 Literal 枚举传值）
+_RECENCY_ALIASES = {
+    "day": "week", "days": "week", "7d": "week", "7天": "week", "一周": "week", "最近一周": "week",
+    "30天": "month", "月": "month", "最近一个月": "month", "recent_month": "month",
+    "半年": "semiyear", "最近半年": "semiyear", "180天": "semiyear", "halfyear": "semiyear", "half_year": "semiyear",
+    "1年": "year", "一年": "year", "最近一年": "year", "365天": "year",
+}
 
 
 class BaiduSearchInput(BaseModel):
@@ -65,6 +78,66 @@ class BaiduSearchInput(BaseModel):
         description="指定搜索的站点列表，最多支持20个站点，默认None，仅在设置的站点中进行内容搜索，示例['www.weather.com.cn', 'news.baidu.com']，通常根据需求指定权威站点，如词条类的通常是百度百科，股票类的通常是东方财富网，开源项目等通常是GitHub等。"
     )
     
+    @model_validator(mode='before')
+    @classmethod
+    def map_query_aliases(cls, data):
+        """query 缺失时，尝试从常见别名参数中取值"""
+        if isinstance(data, dict) and not data.get('query'):
+            for alt in _QUERY_ALIASES:
+                if data.get(alt):
+                    data['query'] = data.pop(alt)
+                    break
+        return data
+
+    @field_validator('query', mode='before')
+    @classmethod
+    def coerce_query(cls, v):
+        """LLM 有时把搜索词传成列表，拼接为字符串"""
+        if isinstance(v, (list, tuple)):
+            return " ".join(str(x).strip() for x in v if str(x).strip())
+        return v
+
+    @field_validator('recency_filter', mode='before')
+    @classmethod
+    def normalize_recency_filter(cls, v):
+        """宽容处理非标准时间筛选值：同义词归一化，无法识别时忽略该筛选而不是报错"""
+        if isinstance(v, str):
+            key = v.strip().lower()
+            if key in ("", "none", "null", "false", "不限", "无"):
+                return None
+            if key in ("week", "month", "semiyear", "year"):
+                return key
+            mapped = _RECENCY_ALIASES.get(key) or _RECENCY_ALIASES.get(v.strip())
+            if mapped:
+                return mapped
+            logger.warning(f"recency_filter 值 '{v}' 无法识别，已忽略时间筛选")
+            return None
+        return v
+
+    @field_validator('sites', mode='before')
+    @classmethod
+    def coerce_sites(cls, v):
+        """LLM 有时把站点传成单个字符串或逗号分隔字符串，统一转为列表"""
+        if isinstance(v, str):
+            parts = [p.strip() for p in re.split(r"[,，、;\s]+", v) if p.strip()]
+            return parts if parts else None
+        if isinstance(v, (list, tuple)):
+            return [str(s).strip() for s in v]
+        return v
+
+    @field_validator('top_k', mode='before')
+    @classmethod
+    def coerce_top_k(cls, v):
+        """宽容处理浮点数和浮点字符串，如 10.0 或 "10.0"（int("10.0") 会失败）"""
+        if isinstance(v, float):
+            return int(v)
+        if isinstance(v, str):
+            try:
+                return int(float(v.strip()))
+            except ValueError:
+                pass
+        return v
+
     @field_validator('query')
     @classmethod
     def validate_query(cls, v: str) -> str:

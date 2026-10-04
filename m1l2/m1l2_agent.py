@@ -85,14 +85,15 @@ searcher = Agent(
     # BaiduSearchTool：百度搜索工具，用于搜索网络信息
     # FileWriterTool：文件写入工具，用于保存调研报告
     tools=[ScrapeWebsiteTool(), BaiduSearchTool(), FileWriterTool()],
-    memory=True,  # 启用记忆功能，Agent 可以记住之前的对话内容
+    memory=False,  # 关闭长期记忆：向量记忆依赖 embedder（默认 OpenAI embedding 需单独的付费 key），单任务场景对话上下文已足够
     max_iter=100,  # 最大迭代次数，防止 Agent 陷入无限循环
     
-    llm = LLM(
-    model="openai/glm-5.2",
-    base_url="https://open.bigmodel.cn/api/paas/v4/",
-    api_key=os.getenv("ZHIPU_API_KEY"),
-    )   
+    llm=LLM(
+        model="openai/glm-5.3-flash",
+        base_url="https://open.bigmodel.cn/api/paas/v4",
+        api_key=os.getenv("ZHIPU_API_KEY"),
+        timeout=300,  # 思考模式生成长内容耗时较久，放宽超时
+    ),
     # llm=aliyun_llm.AliyunLLM(
     #     model="qwen-plus",
     #     api_key=os.getenv("QWEN_API_KEY"),
