@@ -26,11 +26,15 @@ from pathlib import Path
 
 # 添加项目根目录到 Python 路径，以便能够导入项目模块
 project_root = Path(__file__).resolve().parent.parent
-print(project_root)
 sys.path.insert(0, str(project_root))
 
-from crewai import Agent, Task, Crew
-from llm import aliyun_llm
+# 加载项目根目录的 .env 文件，让 os.getenv("ZHIPU_API_KEY") 能读到密钥
+from dotenv import load_dotenv
+load_dotenv(project_root / ".env")
+
+from crewai import Agent, Task, Crew, LLM
+#from llm import aliyun_llm
+from zai import ZhipuAiClient
 from crewai_tools import ScrapeWebsiteTool, FileWriterTool, FileReadTool
 from tools import BaiduSearchTool
 
@@ -83,11 +87,17 @@ searcher = Agent(
     tools=[ScrapeWebsiteTool(), BaiduSearchTool(), FileWriterTool()],
     memory=True,  # 启用记忆功能，Agent 可以记住之前的对话内容
     max_iter=100,  # 最大迭代次数，防止 Agent 陷入无限循环
-    llm=aliyun_llm.AliyunLLM(
-        model="qwen-plus",
-        api_key=os.getenv("QWEN_API_KEY"),
-        region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
-    ),
+    
+    llm = LLM(
+    model="openai/glm-5.2",
+    base_url="https://open.bigmodel.cn/api/paas/v4/",
+    api_key=os.getenv("ZHIPU_API_KEY"),
+    )   
+    # llm=aliyun_llm.AliyunLLM(
+    #     model="qwen-plus",
+    #     api_key=os.getenv("QWEN_API_KEY"),
+    #     region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
+    # ),
 )
 
 
