@@ -21,7 +21,7 @@ Multi-Agent 协作示例
 - Agent 委托：Writer Agent 如何委托 Searcher Agent 完成子任务
 """
 
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew, Process,LLM
 import os
 import sys
 from pathlib import Path
@@ -31,7 +31,9 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from llm import aliyun_llm
+from dotenv import load_dotenv
+load_dotenv(project_root / ".env")
+
 from crewai_tools import ScrapeWebsiteTool, FileWriterTool, FileReadTool
 from tools import BaiduSearchTool, FixedDirectoryReadTool
 
@@ -82,11 +84,17 @@ researcher = Agent(
     tools=[],
     allow_delegation=False,
     memory=True,
-    llm=aliyun_llm.AliyunLLM(
-        model="qwen-plus",
-        api_key=os.getenv("QWEN_API_KEY"),
-        region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
-    ),
+    llm=LLM(
+            model="openai/glm-4.7-flash",
+            base_url="https://open.bigmodel.cn/api/paas/v4",
+            api_key=os.getenv("ZHIPU_API_KEY"),
+            timeout=300,  # 思考模式生成长内容耗时较久，放宽超时
+        ),
+        # llm=aliyun_llm.AliyunLLM(
+        #     model="qwen-plus",
+        #     api_key=os.getenv("QWEN_API_KEY"),
+        #     region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
+        # ),
 )
 
 writer = Agent(
@@ -168,11 +176,17 @@ writer = Agent(
     allow_delegation=True,
     memory=True,
     max_iter=100,  # 最大迭代次数，避免无限循环，默认20这里因为任务步骤复杂，所以设置为100
-    llm=aliyun_llm.AliyunLLM(
-        model="qwen-plus",
-        api_key=os.getenv("QWEN_API_KEY"),
-        region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
-    ),
+    llm=LLM(
+            model="openai/glm-4.7-flash",
+            base_url="https://open.bigmodel.cn/api/paas/v4",
+            api_key=os.getenv("ZHIPU_API_KEY"),
+            timeout=300,  # 思考模式生成长内容耗时较久，放宽超时
+        ),
+        # llm=aliyun_llm.AliyunLLM(
+        #     model="qwen-plus",
+        #     api_key=os.getenv("QWEN_API_KEY"),
+        #     region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
+        # ),
     verbose=True,
 )
 
@@ -229,11 +243,17 @@ searcher = Agent(
     tools=[ScrapeWebsiteTool(), BaiduSearchTool()],
     allow_delegation=False,
     max_iter=15,  # 降低最大迭代次数，提高效率
-    llm=aliyun_llm.AliyunLLM(
-        model="qwen-plus",
-        api_key=os.getenv("QWEN_API_KEY"),
-        region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
-    ),
+    llm=LLM(
+            model="openai/glm-4.7-flash",
+            base_url="https://open.bigmodel.cn/api/paas/v4",
+            api_key=os.getenv("ZHIPU_API_KEY"),
+            timeout=300,  # 思考模式生成长内容耗时较久，放宽超时
+        ),
+        # llm=aliyun_llm.AliyunLLM(
+        #     model="qwen-plus",
+        #     api_key=os.getenv("QWEN_API_KEY"),
+        #     region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
+        # ),
     cache=True,  # 打开缓存，避免重复搜索或者重复抓取网页
     verbose=True,
 )
@@ -330,10 +350,11 @@ editor = Agent(
 - 审核时保持客观，基于报告内容本身进行评估
 - **记住：你的Final Answer必须是完整的审核意见，不是Thought或Action**""",
     tools=[FileReadTool(), FixedDirectoryReadTool()],
-    llm=aliyun_llm.AliyunLLM(
-        model="qwen-plus",
-        api_key=os.getenv("QWEN_API_KEY"),
-        region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
+    llm=LLM(
+        model="openai/glm-4.7-flash",
+        base_url="https://open.bigmodel.cn/api/paas/v4",
+        api_key=os.getenv("ZHIPU_API_KEY"),
+        timeout=300,
     ),
     verbose=True,
 )

@@ -34,7 +34,6 @@ load_dotenv(project_root / ".env")
 
 from crewai import Agent, Task, Crew, LLM
 #from llm import aliyun_llm
-from zai import ZhipuAiClient
 from crewai_tools import ScrapeWebsiteTool, FileWriterTool, FileReadTool
 from tools import BaiduSearchTool
 
@@ -89,7 +88,7 @@ searcher = Agent(
     max_iter=100,  # 最大迭代次数，防止 Agent 陷入无限循环
     
     llm=LLM(
-        model="openai/glm-5.3-flash",
+        model="openai/glm-4.7-flash",
         base_url="https://open.bigmodel.cn/api/paas/v4",
         api_key=os.getenv("ZHIPU_API_KEY"),
         timeout=300,  # 思考模式生成长内容耗时较久，放宽超时
