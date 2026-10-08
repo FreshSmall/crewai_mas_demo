@@ -13,8 +13,11 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from crewai import Agent
-from llm.aliyun_llm import AliyunLLM
+from dotenv import load_dotenv
+load_dotenv(project_root / ".env")
+
+from crewai import Agent,LLM
+#from llm.aliyun_llm import AliyunLLM
 from tools.intermediate_tool import IntermediateTool
 
 
@@ -46,11 +49,18 @@ content_strategist = Agent(
     verbose=True,
     allow_delegation=False,
     tools=[IntermediateTool()],
-    llm=AliyunLLM(
-        model="qwen-plus",
-        api_key=os.getenv("QWEN_API_KEY"),
-        region="cn",
-    ),
+    memory=False,  # 禁用记忆功能，Agent 不会记住之前的对话内容
+    # llm=AliyunLLM(
+    #     model="qwen-plus",
+    #     api_key=os.getenv("QWEN_API_KEY"),
+    #     region="cn",
+    # ),
+     llm=LLM(
+                model="openai/glm-5.3-flash",
+                base_url="https://open.bigmodel.cn/api/paas/v4",
+                api_key=os.getenv("ZHIPU_API_KEY"),
+                timeout=300,  # 思考模式生成长内容耗时较久，放宽超时
+            ),
 )
 
 
